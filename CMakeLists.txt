@@ -139,7 +139,7 @@ include_directories(
  add_executable(${PROJECT_NAME}_node src/offboard_node.cpp)
  add_executable(control_test src/control_test.cpp)
  add_executable(mav_test src/test.cpp)
- add_executable(px4_task src/px4_task.cpp)
+ add_executable(px4_task src/px4_task.cpp src/px4_task.h)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

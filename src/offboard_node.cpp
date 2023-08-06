@@ -72,6 +72,7 @@ int main(int argc, char **argv)
 
     ros::Time last_request = ros::Time::now();
     int flag=0;
+    ROS_INFO("!!!");
     while(ros::ok())
     {
         // 设置offboard 模式，并设置为armed
@@ -102,7 +103,7 @@ int main(int argc, char **argv)
         // 如果上一环节完成，超过10ms 没有last_request，
         if(ros::Time::now() - last_request > ros::Duration(10.0))
         {
-            flag++;
+            // flag++;
             last_request = ros::Time::now();
         }
 
@@ -122,16 +123,16 @@ int main(int argc, char **argv)
            ROS_INFO("acceleration_or_force only");
        }
 
-        if(flag==0)
-        {
-            PositionTarget.position.x=0;
-            PositionTarget.position.y=0;
-            PositionTarget.position.z=2;
-            PositionTarget.coordinate_frame=PositionTarget.FRAME_LOCAL_NED;
-            PositionTarget.type_mask=PositionTarget.IGNORE_VX|PositionTarget.IGNORE_VY|PositionTarget.IGNORE_VZ|PositionTarget.IGNORE_AFX|PositionTarget.IGNORE_AFY|PositionTarget.IGNORE_AFZ|PositionTarget.IGNORE_YAW|PositionTarget.IGNORE_YAW_RATE;
-            PositionTarget_pub.publish(PositionTarget);
-            ROS_INFO("position");
-        }
+        // if(flag==0)
+        // {
+        //     PositionTarget.position.x=0;
+        //     PositionTarget.position.y=0;
+        //     PositionTarget.position.z=2;
+        //     PositionTarget.coordinate_frame=PositionTarget.FRAME_LOCAL_NED;
+        //     PositionTarget.type_mask=PositionTarget.IGNORE_VX|PositionTarget.IGNORE_VY|PositionTarget.IGNORE_VZ|PositionTarget.IGNORE_AFX|PositionTarget.IGNORE_AFY|PositionTarget.IGNORE_AFZ|PositionTarget.IGNORE_YAW|PositionTarget.IGNORE_YAW_RATE;
+        //     PositionTarget_pub.publish(PositionTarget);
+        //     ROS_INFO("position");
+        // }
         if(flag==1)
         {
             PositionTarget.velocity.x=1;
