@@ -6,10 +6,12 @@ Multirotor::Multirotor()
                                 ("mavros/state", 10, &Multirotor::state_cb,this);
     position_sub = nh.subscribe<geometry_msgs::PoseStamped>
                                 ("mavros/local_position/pose", 10, &Multirotor::position_cb,this);
+    velocity_sub = nh.subscribe<geometry_msgs::TwistStamped>
+                                ("mavros/local_position/velocity_body", 10, &Multirotor::velocity_cb,this);
     drop_pub = nh.advertise<mavros_msgs::OverrideRCIn>
                                     ("mavros/rc/override", 10);
     move_pub = nh.advertise<geometry_msgs::PoseStamped>
-                                    ("mavros/setpoint_position/local", 10);
+                                    ("mavros/setpoint_velocity/cmd_vel", 10);
     arming_client = nh.serviceClient<mavros_msgs::CommandBool>
                                        ("mavros/cmd/arming");
     set_mode_client = nh.serviceClient<mavros_msgs::SetMode>
@@ -19,6 +21,8 @@ Multirotor::Multirotor()
 Multirotor::~Multirotor()
 {
 }
+
+// callback function
 
 void Multirotor::state_cb(const mavros_msgs::State::ConstPtr& msg)
 {
@@ -35,15 +39,37 @@ void Multirotor::position_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
     ROS_INFO("drone_pos: x,y,z= %f,%f,%f",drone_pos[0],drone_pos[1],drone_pos[2]);
 }
 
+void Multirotor::velocity_cb(const geometry_msgs::TwistStamped::ConstPtr& msg)
+{
+    drone_vel[0] = msg->twist.linear.x ;
+    drone_vel[1] = msg->twist.linear.y ;
+    drone_vel[2] = msg->twist.linear.z ;
+    ROS_INFO("drone_vel: x,y,z= %f,%f,%f",drone_vel[0],drone_vel[1],drone_vel[2]);
+}
+
+// move function
+
 void Multirotor::flytopoint(Eigen::Vector3d point)
 {
-    geometry_msgs::PoseStamped PositionTarget;
-    PositionTarget.header.stamp = ros::Time::now();
-    PositionTarget.pose.position.x = point[0];
-    PositionTarget.pose.position.y = point[1];
-    PositionTarget.pose.position.z = point[2];
-    move_pub.publish(PositionTarget);
-    ROS_INFO("fly to point: [%f, %f, %f]",point[0],point[1],point[2]);
+    // 使用PID控制器计算期望速度
+    pos_pid_x.set_target(point[0]); 
+    pos_pid_y.set_target(point[1]);
+        // 位置
+    float target_vel_x = pos_pid_x.update(drone_pos[0]); 
+    float target_vel_y = pos_pid_y.update(drone_pos[1]);
+        // 转换为速度环的目标速度
+    vel_pid_x.set_target(target_vel_x); 
+    vel_pid_y.set_target(target_vel_y);
+        // 速度环
+    float output_vel_x = vel_pid_x.update(drone_vel[0]) + drone_vel[0];
+    float output_vel_y = vel_pid_y.update(drone_vel[1]) + drone_vel[1];
+        // 发布期望速度
+    geometry_msgs::TwistStamped velTarget;
+    velTarget.header.stamp = ros::Time::now();
+    velTarget.twist.linear.x = output_vel_x;
+    velTarget.twist.linear.y = output_vel_y;
+    velTarget.twist.linear.z = 0;
+    move_pub.publish(velTarget);
 }
 
 void Multirotor::takeoff()
@@ -83,6 +109,8 @@ void Multirotor::drop_bottle()
     ROS_INFO("drop");
 }
 
+// set mode function
+
 void Multirotor::setoffboardmode()
 {
     mavros_msgs::SetMode offb_set_mode;
@@ -113,10 +141,12 @@ void Multirotor::setoffboardmode()
         }
 }
 
+// init and run function
+
 void Multirotor::init()
 {
     float pos_max, pos_kp, pos_ki, pos_kd, pos_range_rough, pos_range_fine;
-
+    float vel_max, vel_kp, vel_ki, vel_kd, vel_range_rough, vel_range_fine;
     // Load pos_pid parameters with default values
     nh.param<float>("pos_max", pos_max, 0.5);
     nh.param<float>("pos_kp", pos_kp, 0.5);
@@ -125,10 +155,19 @@ void Multirotor::init()
     nh.param<float>("pos_range_rough", pos_range_rough, 1.0);
     nh.param<float>("pos_range_fine", pos_range_fine, 0.3);
 
+    // Load vel_pid parameters with default values
+    nh.param<float>("vel_max", vel_max, 0.5);
+    nh.param<float>("vel_kp", vel_kp, 0.5);
+    nh.param<float>("vel_ki", vel_ki, 0.0);
+    nh.param<float>("vel_kd", vel_kd, 0.0);
+    nh.param<float>("vel_range_rough", vel_range_rough, 1.0);
+    nh.param<float>("vel_range_fine", vel_range_fine, 0.3);
+
     // Initialize PID controllers
     pos_pid_x = PID(pos_kp, pos_ki, pos_kd, pos_max, pos_range_rough, pos_range_fine);
     pos_pid_y = PID(pos_kp, pos_ki, pos_kd, pos_max, pos_range_rough, pos_range_fine);
-
+    vel_pid_x = PID(vel_kp, vel_ki, vel_kd, vel_max, vel_range_rough, vel_range_fine);
+    vel_pid_y = PID(vel_kp, vel_ki, vel_kd, vel_max, vel_range_rough, vel_range_fine);
     
     // set task_points
     task_points.push_back(Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height)); // 起飞点

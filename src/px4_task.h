@@ -41,11 +41,14 @@ public:
 private:
     PID pos_pid_x;
     PID pos_pid_y;
+    PID vel_pid_x;
+    PID vel_pid_y;
+
 
     ros::NodeHandle nh;
     ros::Subscriber state_sub;
     ros::Subscriber position_sub;
-    
+    ros::Subscriber velocity_sub;
     ros::Publisher move_pub;
     ros::Publisher drop_pub ;
     ros::ServiceClient arming_client;
@@ -54,6 +57,7 @@ private:
 
     void state_cb(const mavros_msgs::State::ConstPtr& msg);
     void position_cb(const geometry_msgs::PoseStamped::ConstPtr& msg);
+    void velocity_cb(const geometry_msgs::TwistStamped::ConstPtr& msg);
     void flytopoint(Eigen::Vector3d point);
     void setoffboardmode();
     void takeoff();
@@ -62,6 +66,7 @@ private:
     
     mavros_msgs::State current_state;
     Eigen::Vector3d drone_pos; // 无人机当前位置
+    Eigen::Vector3d drone_vel; // 无人机当前速度
     std::vector<Eigen::Vector3d> task_points; // 任务点
     float fly_height; // 飞行高度
     float min_dis; // 到达任务点的最小距离
