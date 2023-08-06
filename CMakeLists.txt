@@ -13,6 +13,8 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
 )
+find_package(Eigen3 REQUIRED)
+include_directories(${EIGEN3_INCLUDE_DIRS})
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -135,6 +137,7 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
  add_executable(${PROJECT_NAME}_node src/offboard_node.cpp)
+ add_executable(control_test src/control_test.cpp)
  add_executable(mav_test src/test.cpp)
 
 ## Rename C++ executable without prefix
@@ -152,6 +155,9 @@ include_directories(
    ${catkin_LIBRARIES}
  )
  target_link_libraries(mav_test
+   ${catkin_LIBRARIES}
+ )
+ target_link_libraries(control_test
    ${catkin_LIBRARIES}
  )
 
