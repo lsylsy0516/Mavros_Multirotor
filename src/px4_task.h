@@ -14,17 +14,19 @@
 #include <stdio.h>
 #include <Eigen/Dense>
 #include <std_msgs/Bool.h>
+#include "module/pid.h"
 #include <mavros_msgs/OverrideRCIn.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/TwistStamped.h>
 #include <geometry_msgs/Vector3Stamped.h>
+#include <geometry_msgs/PoseStamped.h>
+
 #include <mavros_msgs/AttitudeTarget.h>
 #include <mavros_msgs/PositionTarget.h>
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/State.h>
 
-#include <geometry_msgs/PoseStamped.h>
 #include <Eigen/Eigen>
 
 #ifndef __PX4_TASK_H
@@ -37,9 +39,13 @@ public:
     void init();
     void run();
 private:
+    PID pos_pid_x;
+    PID pos_pid_y;
+
     ros::NodeHandle nh;
     ros::Subscriber state_sub;
     ros::Subscriber position_sub;
+    
     ros::Publisher move_pub;
     ros::Publisher drop_pub ;
     ros::ServiceClient arming_client;

@@ -115,10 +115,22 @@ void Multirotor::setoffboardmode()
 
 void Multirotor::init()
 {
-    // 参数初始化
-    nh.param<float>("fly_height",fly_height,0.5);
-    nh.param<float>("min_dis",min_dis,0.1);
+    float pos_max, pos_kp, pos_ki, pos_kd, pos_range_rough, pos_range_fine;
+
+    // Load pos_pid parameters with default values
+    nh.param<float>("pos_max", pos_max, 0.5);
+    nh.param<float>("pos_kp", pos_kp, 0.5);
+    nh.param<float>("pos_ki", pos_ki, 0.0);
+    nh.param<float>("pos_kd", pos_kd, 0.0);
+    nh.param<float>("pos_range_rough", pos_range_rough, 1.0);
+    nh.param<float>("pos_range_fine", pos_range_fine, 0.3);
+
+    // Initialize PID controllers
+    pos_pid_x = PID(pos_kp, pos_ki, pos_kd, pos_max, pos_range_rough, pos_range_fine);
+    pos_pid_y = PID(pos_kp, pos_ki, pos_kd, pos_max, pos_range_rough, pos_range_fine);
+
     
+    // set task_points
     task_points.push_back(Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height)); // 起飞点
     task_points.push_back(Eigen::Vector3d(30, 0,fly_height)); // 任务点1
     task_points.push_back(Eigen::Vector3d(30,-4,fly_height)); // 任务点2
@@ -138,7 +150,11 @@ void Multirotor::init()
 void Multirotor::run()
 {
     ros::Rate rate(20); //接收和发布频率
-    // takeoff
+    
+    // Takeoff
+    // Pid module init
+    pos_pid.init();
+    pos_pid
     while(switchflag == 0)
     {
         setoffboardmode();
@@ -147,7 +163,7 @@ void Multirotor::run()
         ros::spinOnce();
 
         double distance = abs(drone_pos[2]-fly_height);
-        if (distance < min_dis)
+        if (distance < 0.01)
             switchflag = 1;
     }
     
@@ -156,6 +172,7 @@ void Multirotor::run()
     // reset the switchflag
     switchflag = 0;
     int point_num = 0;
+    pos_pid.reset
     
     // task_points
     while (switchflag == 0)

@@ -1,4 +1,5 @@
 <launch>
+     <rosparam file="$(find offboard)/config/cadc_task.yaml" command="load"/>
     <!-- 启动 realsense2_camera 节点，但将输出定向到日志文件 -->
     <include file="$(find realsense2_camera)/launch/vins_rs_camera.launch" />
 

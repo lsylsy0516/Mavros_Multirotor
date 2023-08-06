@@ -10,6 +10,7 @@ class PID
 {
 public:
     PID(float kp,float ki,float kd,float max_out,float range_rough,float range_fine);
+    PID();
     ~PID();
     void init();
     void reset();

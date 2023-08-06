@@ -2,7 +2,7 @@
 
 PID::PID(float kp, float ki, float kd, float max_out, float range_rough, float range_fine)
     : kp(kp), ki(ki), kd(kd), max_out(max_out), range_rough(range_rough), range_fine(range_fine) {}
-
+PID::PID(){}
 PID::~PID() {}
 
 void PID::init()
