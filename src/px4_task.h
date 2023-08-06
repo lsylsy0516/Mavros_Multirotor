@@ -49,7 +49,8 @@ private:
     ros::Subscriber state_sub;
     ros::Subscriber position_sub;
     ros::Subscriber velocity_sub;
-    ros::Publisher move_pub;
+    ros::Publisher vel_pub;
+    ros::Publisher pos_pub;
     ros::Publisher drop_pub ;
     ros::ServiceClient arming_client;
     ros::ServiceClient set_mode_client;

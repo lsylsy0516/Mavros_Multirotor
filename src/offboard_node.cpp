@@ -71,7 +71,7 @@ int main(int argc, char **argv)
     arm_cmd.request.value = true;
 
     ros::Time last_request = ros::Time::now();
-    int flag=0;
+    int flag=1;
     ROS_INFO("!!!");
     while(ros::ok())
     {

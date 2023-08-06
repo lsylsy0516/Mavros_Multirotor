@@ -10,7 +10,9 @@ Multirotor::Multirotor()
                                 ("mavros/local_position/velocity_body", 10, &Multirotor::velocity_cb,this);
     drop_pub = nh.advertise<mavros_msgs::OverrideRCIn>
                                     ("mavros/rc/override", 10);
-    move_pub = nh.advertise<geometry_msgs::PoseStamped>
+    pos_pub = nh.advertise<geometry_msgs::PoseStamped>
+                                   ("mavros/setpoint_position/local", 10);
+    vel_pub = nh.advertise<geometry_msgs::TwistStamped>
                                     ("mavros/setpoint_velocity/cmd_vel", 10);
     arming_client = nh.serviceClient<mavros_msgs::CommandBool>
                                        ("mavros/cmd/arming");
@@ -69,7 +71,7 @@ void Multirotor::flytopoint(Eigen::Vector3d point)
     velTarget.twist.linear.x = output_vel_x;
     velTarget.twist.linear.y = output_vel_y;
     velTarget.twist.linear.z = 0;
-    move_pub.publish(velTarget);
+    vel_pub.publish(velTarget);
 }
 
 void Multirotor::takeoff()
@@ -79,7 +81,7 @@ void Multirotor::takeoff()
     PositionTarget.pose.position.x = drone_pos[0];
     PositionTarget.pose.position.y = drone_pos[1];
     PositionTarget.pose.position.z = fly_height;
-    move_pub.publish(PositionTarget);
+    pos_pub.publish(PositionTarget);
     ROS_INFO("takeoff x,y,z= %f,%f,%f",PositionTarget.pose.position.x,PositionTarget.pose.position.y,PositionTarget.pose.position.z);
 }
 
@@ -90,7 +92,7 @@ void Multirotor::land()
     PositionTarget.pose.position.x = drone_pos[0];
     PositionTarget.pose.position.y = drone_pos[1];
     PositionTarget.pose.position.z = 0;
-    move_pub.publish(PositionTarget);
+    pos_pub.publish(PositionTarget);
     ROS_INFO("land x,y,z= %f,%f,%f",PositionTarget.pose.position.x,PositionTarget.pose.position.y,PositionTarget.pose.position.z);
 }
 
@@ -169,6 +171,8 @@ void Multirotor::init()
     vel_pid_x = PID(vel_kp, vel_ki, vel_kd, vel_max, vel_range_rough, vel_range_fine);
     vel_pid_y = PID(vel_kp, vel_ki, vel_kd, vel_max, vel_range_rough, vel_range_fine);
     
+    nh.param<float>("fly_height",fly_height,0.5);
+    nh.param<float>("min_dis",min_dis,0.1);
     // set task_points
     task_points.push_back(Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height)); // 起飞点
     task_points.push_back(Eigen::Vector3d(30, 0,fly_height)); // 任务点1
@@ -192,8 +196,11 @@ void Multirotor::run()
     
     // Takeoff
     // Pid module init
-    pos_pid.init();
-    pos_pid
+    pos_pid_x.init();
+    pos_pid_y.init();
+    vel_pid_x.init();
+    vel_pid_y.init();
+
     while(switchflag == 0)
     {
         setoffboardmode();
@@ -202,8 +209,13 @@ void Multirotor::run()
         ros::spinOnce();
 
         double distance = abs(drone_pos[2]-fly_height);
-        if (distance < 0.01)
+        if (distance < 0.01){
             switchflag = 1;
+            pos_pid_x.reset();
+            pos_pid_y.reset();
+            vel_pid_x.reset();
+            vel_pid_y.reset();
+        }
     }
     
     // wait 1s more
@@ -211,7 +223,7 @@ void Multirotor::run()
     // reset the switchflag
     switchflag = 0;
     int point_num = 0;
-    pos_pid.reset
+
     
     // task_points
     while (switchflag == 0)
@@ -226,8 +238,13 @@ void Multirotor::run()
         if (distance < min_dis)
         {
             point_num++;
-            if (point_num == 3)   switchflag = 1;
-
+            if (point_num == 3)   {
+                switchflag = 1;
+                pos_pid_x.reset();
+                pos_pid_y.reset();
+                vel_pid_x.reset();
+                vel_pid_y.reset();
+            }
             // wait 1s more
             sleep(1.0);
         }
@@ -247,6 +264,10 @@ void Multirotor::run()
     sleep(1.0);
     // reset the switchflag
     switchflag = 0;
+    pos_pid_x.reset();
+    pos_pid_y.reset();
+    vel_pid_x.reset();
+    vel_pid_y.reset();
 
     // return to the takeoff point
     while (switchflag == 0)
