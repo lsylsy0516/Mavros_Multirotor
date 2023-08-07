@@ -1,0 +1,6 @@
+<launch>
+    <rosparam file="$(find offboard)/config/cadc_task.yaml" command="load"/>
+
+    <node name = "px4_task" pkg="offboard" type="px4_task" output="screen" />
+
+</launch>

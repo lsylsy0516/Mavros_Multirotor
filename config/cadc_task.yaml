@@ -1,17 +1,19 @@
 ## cadc_task parameters
-fly_height: 1.0
-min_distance: 0.1
+fly_height: 3.0
+min_distance: 0.15
+change_dis: 0.5
 
-pos_max: 0.5
-pos_kp: 0.5
+pos_max: 2.0
+pos_kp: 0.3
 pos_ki: 0.0
 pos_kd: 0.0
-pos_range_rough: 1.0
-pos_range_fine: 0.3
+pos_range_rough: 5.0
+pos_range_fine: 0.4
 
 vel_max: 0.5
 vel_kp: 0.5
 vel_ki: 0.0
 vel_kd: 0.0
-vel_range_rough: 1.0
-vel_range_fine: 0.3
+vel_range_rough: 0.5 
+vel_range_fine: 0.1
+

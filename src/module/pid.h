@@ -4,6 +4,8 @@
  * 用于控制无人机的速度，输入为无人机当前位置，输出为无人机期望速度
 */
 #include <cmath>
+#include <stdio.h>
+#include <iostream>
 #ifndef __PID_H
 #define __PID_H
 class PID
