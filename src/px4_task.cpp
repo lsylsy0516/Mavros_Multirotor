@@ -33,8 +33,9 @@ void Multirotor::state_cb(const mavros_msgs::State::ConstPtr& msg)
     // ROS_INFO("current_state.armed = %d",current_state.armed);
 }
 
-void Multirotor::position_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
+void Multirotor::position_cb(const geometry_msgs::PoseStamped::ConstPtr& msg) 
 {
+    //drone_pos ENU
     drone_pos[0] = msg->pose.position.x ;
     drone_pos[1] = msg->pose.position.y ;
     drone_pos[2] = msg->pose.position.z ;
@@ -123,6 +124,9 @@ void Multirotor::drop_bottle()
     // drop_cmd.channels[6] = 0;
     // drop_cmd.channels[7] = 1500;
     // drop_pub.publish(drop_cmd);  // fakedrop,有BUG
+    
+    // 使用参数服务器来更新 舵机的占空比
+    nh.setParam("servo_position",50) // drop 占空比
     Eigen::Vector3d current_pos = Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height);
     flytopoint(current_pos);
     ROS_INFO("drop");
@@ -194,7 +198,7 @@ void Multirotor::init()
     
     nh.param<float>("fly_height",fly_height,0.5);
     nh.param<float>("min_dis",min_dis,0.1);
-    nh.param<float>("change_dis",change_dis,0.5);
+    nh.setParam("servo_position",100) // 初始化占空比
 
     for (int i = 0; i < 5; i++)
     {
@@ -203,10 +207,15 @@ void Multirotor::init()
     }
     // set task_points
     task_points.push_back(Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height)); // 起飞点
-    task_points.push_back(Eigen::Vector3d(30, 0,fly_height)); // 任务点1
-    task_points.push_back(Eigen::Vector3d(30,-4,fly_height)); // 任务点2
-    task_points.push_back(Eigen::Vector3d(50,-4,fly_height)); // 任务点3
-    task_points.push_back(Eigen::Vector3d(50, 4,fly_height)); // 任务点4
+    // // fake fly points
+    // task_points.push_back(Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height)); // 起飞点
+    // task_points.push_back(Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height)); // 起飞点
+    // task_points.push_back(Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height)); // 起飞点
+    // task_points.push_back(Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height)); // 起飞点
+    task_points.push_back(Eigen::Vector3d( 0,30,fly_height)); // 任务点1
+    task_points.push_back(Eigen::Vector3d(-4,30,fly_height)); // 任务点2
+    task_points.push_back(Eigen::Vector3d(-4,50,fly_height)); // 任务点3
+    task_points.push_back(Eigen::Vector3d( 4,50,fly_height)); // 任务点4
 
     switchflag = 0;
     while(ros::ok() && !current_state.connected)

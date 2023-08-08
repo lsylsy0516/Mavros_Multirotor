@@ -10,7 +10,7 @@
 #include <nav_msgs/Odometry.h>
 #include <Eigen/Eigen>
 
-Eigen::Vector3d pos_drone_vio;                          //无人机当前位置 (vision)
+Eigen::Vector3d pos_drone_vio;                          //无人机当前位置 (vision) using FLU
 Eigen::Quaterniond q_vio;
 Eigen::Vector3d Euler_vio;                              //无人机当前姿态 (vision)
 ros::Publisher vision_pub;
@@ -20,18 +20,18 @@ geometry_msgs::PoseStamped current_pose;
 
 void send_to_fcu()
 {
-    geometry_msgs::PoseStamped vision;
-    vision.pose.position.x = pos_drone_vio[1] ;
-    vision.pose.position.y = -pos_drone_vio[0] ;
-    vision.pose.position.z = pos_drone_vio[2] ;
-
+    geometry_msgs::PoseStamped vision;  // should be ENU
+    vision.pose.position.x = pos_drone_vio[0] ; // E 
+    vision.pose.position.y = pos_drone_vio[1] ; // N
+    vision.pose.position.z = pos_drone_vio[2] ; // U
+    ROS_INFO("E,N,U= %f,%f,%f",vision.pose.position.x,vision.pose.position.y,vision.pose.position.z);
     vision.pose.orientation.x = q_vio.x();
     vision.pose.orientation.y = q_vio.y();
     vision.pose.orientation.z = q_vio.z();
     vision.pose.orientation.w = q_vio.w();
 
     vision.header.stamp = ros::Time::now();
-    vision_pub.publish(vision);
+    vision_pub.publish(vision); // vision 
 }
 
 void state_cb(const mavros_msgs::State::ConstPtr& msg)
@@ -68,13 +68,13 @@ void vins_estimator_cb(const nav_msgs::Odometry::ConstPtr& msg)
     nav_msgs::Odometry vision_pose;
     vision_pose = *msg;
 
-    // 从ENU坐标系转换为NED坐标系
-    pos_drone_vio[0] = vision_pose.pose.pose.position.y; //bugs
-    pos_drone_vio[1] = vision_pose.pose.pose.position.x;
-    pos_drone_vio[2] = (-1)*vision_pose.pose.pose.position.z; 
-    // pos_drone_vio[0] = vision_pose.pose.pose.position.x;
-    // pos_drone_vio[1] = vision_pose.pose.pose.position.y;
-    // pos_drone_vio[2] = vision_pose.pose.pose.position.z; 
+    //  FLU xi
+    // pos_drone_vio[0] = vision_pose.pose.pose.position.y; //bugs
+    // pos_drone_vio[1] = vision_pose.pose.pose.position.x;
+    // pos_drone_vio[2] = (-1)*vision_pose.pose.pose.position.z; 
+    pos_drone_vio[0] = vision_pose.pose.pose.position.x;
+    pos_drone_vio[1] = vision_pose.pose.pose.position.y;
+    pos_drone_vio[2] = vision_pose.pose.pose.position.z; 
 
     q_vio.x() = vision_pose.pose.pose.orientation.x;
     q_vio.y() = vision_pose.pose.pose.orientation.y;

@@ -68,12 +68,11 @@ private:
     void drop_bottle();
     
     mavros_msgs::State current_state;
-    Eigen::Vector3d drone_pos; // 无人机当前位置
+    Eigen::Vector3d drone_pos; // 无人机当前位置  // enu
     Eigen::Vector3d drone_vel; // 无人机当前速度
     std::vector<Eigen::Vector3d> task_points; // 任务点
     float fly_height; // 飞行高度
     float min_dis; // 到达任务点的最小距离
-    float change_dis;
     int switchflag; // 任务点切换标志
 };
 
