@@ -1,5 +1,6 @@
 #include "px4_task.h"
 using namespace std;
+
 Multirotor::Multirotor()
 {
     state_sub = nh.subscribe<mavros_msgs::State>
@@ -29,8 +30,6 @@ Multirotor::~Multirotor()
 void Multirotor::state_cb(const mavros_msgs::State::ConstPtr& msg)
 {
     current_state = *msg;
-    // ROS_INFO("mode = %s",current_state.mode.c_str());
-    // ROS_INFO("current_state.armed = %d",current_state.armed);
 }
 
 void Multirotor::position_cb(const geometry_msgs::PoseStamped::ConstPtr& msg) 
@@ -39,7 +38,6 @@ void Multirotor::position_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
     drone_pos[0] = msg->pose.position.x ;
     drone_pos[1] = msg->pose.position.y ;
     drone_pos[2] = msg->pose.position.z ;
-    // ROS_INFO("drone_pos: x,y,z= %f,%f,%f",drone_pos[0],drone_pos[1],drone_pos[2]);
 }
 
 void Multirotor::velocity_cb(const geometry_msgs::TwistStamped::ConstPtr& msg)
@@ -47,7 +45,6 @@ void Multirotor::velocity_cb(const geometry_msgs::TwistStamped::ConstPtr& msg)
     drone_vel[0] = msg->twist.linear.x ;
     drone_vel[1] = msg->twist.linear.y ;
     drone_vel[2] = msg->twist.linear.z ;
-    // ROS_INFO("drone_vel: x,y,z= %f,%f,%f",drone_vel[0],drone_vel[1],drone_vel[2]);
 }
 
 // move function
@@ -75,61 +72,56 @@ void Multirotor::flytopoint(Eigen::Vector3d point)
     velTarget.header.stamp = ros::Time::now();
     velTarget.twist.linear.x = output_vel_x;
     velTarget.twist.linear.y = output_vel_y;
-    velTarget.twist.linear.z = output_vel_z; //Z轴存在BUG,暂时不能用
-    // velTarget.twist.linear.z = 0;
+    velTarget.twist.linear.z = output_vel_z; 
     vel_pub.publish(velTarget);
 
-    ROS_INFO("Current Velocity: [%f, %f, %f]", drone_vel[0], drone_vel[1],drone_vel[2]);
-    ROS_INFO("Desired Velocity: [%f, %f, %f]", output_vel_x, output_vel_y,output_vel_z);
-
-    // 输出当前位置和目标点
+        // 输出当前和目标状态
     ROS_INFO("Current Position: [%f, %f, %f]", drone_pos[0], drone_pos[1],drone_pos[2]);
     ROS_INFO("Target  Position: [%f, %f, %f]", point[0], point[1],point[2]);
+    ROS_INFO("Current Velocity: [%f, %f, %f]", drone_vel[0], drone_vel[1],drone_vel[2]);
+    ROS_INFO("Desired Velocity: [%f, %f, %f]", output_vel_x, output_vel_y,output_vel_z);
     ROS_INFO("------------------------------");
 }
 
 void Multirotor::takeoff()
 {
+        // POSITION
     geometry_msgs::PoseStamped PositionTarget;
     PositionTarget.header.stamp = ros::Time::now();
     PositionTarget.pose.position.x = task_points[0][0];
     PositionTarget.pose.position.y = task_points[0][1];
     PositionTarget.pose.position.z = fly_height;
     pos_pub.publish(PositionTarget);
+        // 输出当前和目标状态
+    ROS_INFO("------------------------------");
     ROS_INFO("drone_pos: x,y,z= %f,%f,%f",drone_pos[0],drone_pos[1],drone_pos[2]);
-    ROS_INFO("takeoff x,y,z= %f,%f,%f",PositionTarget.pose.position.x,PositionTarget.pose.position.y,PositionTarget.pose.position.z);
+    ROS_INFO("takeoff  : x,y,z= %f,%f,%f",PositionTarget.pose.position.x,PositionTarget.pose.position.y,PositionTarget.pose.position.z);
 }
 
 void Multirotor::land()
 {
+        // POSITION
     geometry_msgs::PoseStamped PositionTarget;
     PositionTarget.header.stamp = ros::Time::now();
     PositionTarget.pose.position.x = drone_pos[0];
     PositionTarget.pose.position.y = drone_pos[1];
     PositionTarget.pose.position.z = 0;
     pos_pub.publish(PositionTarget);
+        // 输出当前和目标状态
+    ROS_INFO("------------------------------");
     ROS_INFO("drone_pos: x,y,z= %f,%f,%f",drone_pos[0],drone_pos[1],drone_pos[2]);
-    ROS_INFO("land x,y,z= %f,%f,%f",PositionTarget.pose.position.x,PositionTarget.pose.position.y,PositionTarget.pose.position.z);
+    ROS_INFO("landing  :  x,y,z= %f,%f,%f",PositionTarget.pose.position.x,PositionTarget.pose.position.y,PositionTarget.pose.position.z);
 }
 
 void Multirotor::drop_bottle()
 {
-    // mavros_msgs::OverrideRCIn drop_cmd;
-    // drop_cmd.channels[0] = 1500;
-    // drop_cmd.channels[1] = 1500;
-    // drop_cmd.channels[2] = 1500;
-    // drop_cmd.channels[3] = 1500;
-    // drop_cmd.channels[4] = 0;
-    // drop_cmd.channels[5] = 0;
-    // drop_cmd.channels[6] = 0;
-    // drop_cmd.channels[7] = 1500;
-    // drop_pub.publish(drop_cmd);  // fakedrop,有BUG
-    
     // 使用参数服务器来更新 舵机的占空比
-    nh.setParam("servo_position",50) // drop 占空比
+    nh.setParam("servo_position",SERVO_OPEN); // drop 占空比
+    // POSITION 
     Eigen::Vector3d current_pos = Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height);
     flytopoint(current_pos);
-    ROS_INFO("drop");
+    // ROSINFO
+    ROS_INFO("dropping");
 }
 
 // set mode function
@@ -141,96 +133,66 @@ void Multirotor::setoffboardmode()
 
     mavros_msgs::CommandBool arm_cmd;
     arm_cmd.request.value = true;
-    // 设置offboard 模式，并设置为armed
 
-        if( current_state.mode != "OFFBOARD")
+    // 设置offboard 模式，并设置为armed
+    if( current_state.mode != "OFFBOARD")
+    {
+        if( set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) 
+            ROS_INFO("Offboard enabled");
+    }
+    else
+    {
+        if( !current_state.armed )
         {
-            if( set_mode_client.call(offb_set_mode) && // 设置为 offboard模式
-                    offb_set_mode.response.mode_sent) // 接收成功
-            {
-                ROS_INFO("Offboard enabled");
-            }
+            if( arming_client.call(arm_cmd) && arm_cmd.response.success)
+                ROS_INFO("Vehicle armed");
         }
-        else
-        {
-            if( !current_state.armed )
-            {
-                if( arming_client.call(arm_cmd) &&
-                        arm_cmd.response.success)
-                {
-                    ROS_INFO("Vehicle armed");
-                }
-            }
-        }
+    }
 }
 
 // init and run function
-
-void Multirotor::init()
+void Multirotor::pid_init()
 {
-    ros::Rate rate(20); 
-    float pos_max, pos_kp, pos_ki, pos_kd, pos_range_rough, pos_range_fine;
-    float vel_max, vel_kp, vel_ki, vel_kd, vel_range_rough, vel_range_fine;
-    // Load pos_pid parameters with default values
-    nh.param<float>("pos_max", pos_max, 2.0);
-    nh.param<float>("pos_kp", pos_kp, 0.1);
-    nh.param<float>("pos_ki", pos_ki, 0.0);
-    nh.param<float>("pos_kd", pos_kd, 0.0);
-    nh.param<float>("pos_range_rough", pos_range_rough, 5.0);
-    nh.param<float>("pos_range_fine", pos_range_fine, 0.3);
+    std::vector<std::string> axes = {"x", "y", "z"};
+    std::vector<std::string> controls = {"vel", "acc"};
 
-    // Load vel_pid parameters with default values
-    nh.param<float>("vel_max", vel_max, 0.5);
-    nh.param<float>("vel_kp", vel_kp, 0.5);
-    nh.param<float>("vel_ki", vel_ki, 0.0);
-    nh.param<float>("vel_kd", vel_kd, 0.0);
-    nh.param<float>("vel_range_rough", vel_range_rough, 1.0);
-    nh.param<float>("vel_range_fine", vel_range_fine, 0.3);
-
-    // Initialize PID controllers
-    vel_pid_x = PID(pos_kp, pos_ki, pos_kd, pos_max, pos_range_rough, pos_range_fine);
-    vel_pid_y = PID(pos_kp, pos_ki, pos_kd, pos_max, pos_range_rough, pos_range_fine);
-    vel_pid_z = PID(pos_kp, pos_ki, pos_kd, pos_max, pos_range_rough, pos_range_fine);
-
-    acc_pid_x = PID(vel_kp, vel_ki, vel_kd, vel_max, vel_range_rough, vel_range_fine);
-    acc_pid_y = PID(vel_kp, vel_ki, vel_kd, vel_max, vel_range_rough, vel_range_fine);
-    acc_pid_z = PID(1.0, vel_ki, vel_kd, vel_max, vel_range_rough, vel_range_fine);
+    std::vector<PID> vel_pid_ctrs(axes.size());
+    std::vector<PID> acc_pid_ctrs(axes.size());
     
-    nh.param<float>("fly_height",fly_height,0.5);
-    nh.param<float>("min_dis",min_dis,0.1);
-    nh.setParam("servo_position",100) // 初始化占空比
+    for (size_t axis_idx = 0; axis_idx < axes.size(); ++axis_idx) {
+        for (size_t control_idx = 0; control_idx < controls.size(); ++control_idx)
+        {
+            // Init axis and control     
+            const std::string& axis = axes[axis_idx];
+            const std::string& control = controls[control_idx];
 
-    for (int i = 0; i < 5; i++)
-    {
-        ros::spinOnce();
-        rate.sleep();
+            // Load PID parameters with default values
+            float output_max, kp, ki, kd, range_rough, range_fine;
+            nh.param<float>(axis + "/" + control + "/kp", kp, 0.0);
+            nh.param<float>(axis + "/" + control + "/ki", ki, 0.0);
+            nh.param<float>(axis + "/" + control + "/kd", kd, 0.0);
+            nh.param<float>(axis + "/" + control + "/outputmax", output_max, 0.0);
+            nh.param<float>(axis + "/" + control + "/range_rough", range_rough, 0.0);
+            nh.param<float>(axis + "/" + control + "/range_fine", range_fine, 0.0);
+            
+            // Initialize PID controllers and store them in the vectors
+            PID pid_controller(kp, ki, kd, output_max, range_rough, range_fine);
+            if (control == "vel") {
+                vel_pid_ctrs[axis_idx] = pid_controller;
+            } else if (control == "acc") {
+                acc_pid_ctrs[axis_idx] = pid_controller;
+            }
+        }
     }
-    // set task_points
-    task_points.push_back(Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height)); // 起飞点
-    // // fake fly points
-    // task_points.push_back(Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height)); // 起飞点
-    // task_points.push_back(Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height)); // 起飞点
-    // task_points.push_back(Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height)); // 起飞点
-    // task_points.push_back(Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height)); // 起飞点
-    task_points.push_back(Eigen::Vector3d( 0,30,fly_height)); // 任务点1
-    task_points.push_back(Eigen::Vector3d(-4,30,fly_height)); // 任务点2
-    task_points.push_back(Eigen::Vector3d(-4,50,fly_height)); // 任务点3
-    task_points.push_back(Eigen::Vector3d( 4,50,fly_height)); // 任务点4
 
-    switchflag = 0;
-    while(ros::ok() && !current_state.connected)
-    {
-        ros::spinOnce();
-        rate.sleep();
-    }
-    ROS_INFO("Multirotor Inited!");
-}
+    // Load PID Class
+    vel_pid_x = vel_pid_ctrs[0];
+    vel_pid_y = vel_pid_ctrs[1];
+    vel_pid_z = vel_pid_ctrs[2];
+    acc_pid_x = acc_pid_ctrs[0];
+    acc_pid_y = acc_pid_ctrs[1];
+    acc_pid_z = acc_pid_ctrs[2];
 
-void Multirotor::run()
-{
-    ros::Rate rate(20); //接收和发布频率
-    
-    // Takeoff
     // Pid module init
     vel_pid_x.init();
     vel_pid_y.init();
@@ -238,92 +200,154 @@ void Multirotor::run()
     acc_pid_x.init();
     acc_pid_y.init();
     acc_pid_z.init();
+}
 
+void Multirotor::init()
+{
+    ros::Rate rate(20); 
+        // Load  PID parameters with default values
+    pid_init();
+    nh.setParam("servo_position",SERVO_CLOSE); // 初始化占空比
+    nh.param<float>("fly_height",fly_height,0.5);
+    nh.param<float>("min_dis",min_dis,0.1);
+
+        // Get Drone_pos
+    for (int i = 0; i < 5; i++)
+    {
+        ros::spinOnce();
+        rate.sleep();
+    }
+
+        // Set Task_points
+    task_points.push_back(Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height)); // takeoff point
+    task_points.push_back(Eigen::Vector3d( 0,30,fly_height)); // task point 1
+    task_points.push_back(Eigen::Vector3d(-4,30,fly_height)); // task point 2
+    task_points.push_back(Eigen::Vector3d(-4,50,fly_height)); // task point 3
+    task_points.push_back(Eigen::Vector3d( 4,50,fly_height)); // task point 4
+
+        // For Test
+    // task_points.push_back(Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height)); 
+    // task_points.push_back(Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height)); 
+    // task_points.push_back(Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height)); 
+    // task_points.push_back(Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height)); 
+
+        // Get Connected
+    while(ros::ok() && !current_state.connected)
+    {
+        ros::spinOnce();
+        rate.sleep();
+    }
+        // Set SwitchFlag
+    switchflag = 0;
+    
+    ROS_INFO("Multirotor Inited!");
+}
+
+void Multirotor::run()
+{   
+    ros::Rate rate(20); 
+    // Takeoff
     while(switchflag == 0)
     {
         setoffboardmode();
         takeoff(); // POSITION
+        
         rate.sleep();
         ros::spinOnce();
 
-        double distance = sqrt(pow((drone_pos[0]-task_points[0][0]),2)+pow((drone_pos[1]-task_points[0][1]),2)+pow((drone_pos[2]-task_points[0][2]),2));
-
-        if (distance <min_dis){
+        double distance3d = sqrt(pow((drone_pos[0]-task_points[0][0]),2)+pow((drone_pos[1]-task_points[0][1]),2)+pow((drone_pos[2]-task_points[0][2]),2));
+        if (distance3d <min_dis){
+            // reset the switchflag
             switchflag = 1;
+            //reset pid
             vel_pid_x.reset();
             vel_pid_y.reset();
             vel_pid_z.reset();
             acc_pid_x.reset();
             acc_pid_y.reset();
             acc_pid_z.reset();
+            // wait 1s more
+            sleep(1.0);
         }else{
-            ROS_INFO("distance= %f",distance);
+            ROS_INFO("distance= %f",distance3d);
         }
     }
     
-    // wait 1s more
-    sleep(1.0);
     // reset the switchflag
     switchflag = 0;
 
-    int point_num = 1;
     // task_points
+    int point_num = 1;
     while (switchflag == 0)
     {
         setoffboardmode();
-        flytopoint(task_points[point_num]);  // VELCILITY
+        flytopoint(task_points[point_num]);  // VELOCILITY
+
         rate.sleep();
         ros::spinOnce();
-        // calc the distance to the task point
+
         double distance2d = sqrt(pow((drone_pos[0]-task_points[point_num][0]),2)+pow((drone_pos[1]-task_points[point_num][1]),2));
         if (distance2d < min_dis)
         {
-            point_num++;
             vel_pid_x.reset();
             vel_pid_y.reset();
             vel_pid_z.reset();
             acc_pid_x.reset();
             acc_pid_y.reset();
             acc_pid_z.reset();
-            if (point_num == 5)   {
-                switchflag = 1;
-            }
-            // wait 1s more
-            ROS_INFO("ARRIVED POINT:%d",point_num);
+
+            point_num++;
+            if (point_num == 5) switchflag = 1; 
+
             sleep(1.0);
+                
+            ROS_INFO("ARRIVED POINT:%d",point_num);
         }else{
             ROS_INFO("distance= %f",distance2d);
         }
     }
 
-    // drop
-    int count = 0;
-    while (count < 60) // 3s
-    {
-        drop_bottle();
-        ros::spinOnce();
-        rate.sleep();
-        count++;
-    }
-    
-    // wait 1s more
-    sleep(1.0);
     // reset the switchflag
     switchflag = 0;
-    vel_pid_x.reset();
-    vel_pid_y.reset();
-    vel_pid_z.reset();
-    acc_pid_x.reset();
-    acc_pid_y.reset();
-    acc_pid_z.reset();
+
+    // drop
+    int count = 0;
+    while (switchflag == 0)
+    {
+        drop_bottle();
+
+        ros::spinOnce();
+        rate.sleep();
+        
+        count++;
+        if (count == 60)  // 3s
+        {
+            // reset pid
+            vel_pid_x.reset();
+            vel_pid_y.reset();
+            vel_pid_z.reset();
+            acc_pid_x.reset();
+            acc_pid_y.reset();
+            acc_pid_z.reset();
+            // reset the switchflag
+            switchflag = 1;
+            // wait 1s more
+            sleep(1.0);
+        }
+    }
+    
+    // reset the switchflag
+    switchflag = 0;
 
     // return to the takeoff point
     while (switchflag == 0)
     {
+        setoffboardmode();
         flytopoint(task_points[0]);
+
         ros::spinOnce();
         rate.sleep();
-        // calc the distance to the task point
+
         double distance2d = sqrt(pow((drone_pos[0]-task_points[0][0]),2)+pow((drone_pos[1]-task_points[0][1]),2));
         if (distance2d < min_dis)
         {
@@ -333,15 +357,38 @@ void Multirotor::run()
         }
     }
 
-    count = 0;
+    // reset the switchflag
+    switchflag = 0;
+
     // land 
-    while (count < 100) // 5s
+    count = 0;
+    while (switchflag == 0) 
     {
         land();
+
         ros::spinOnce();
         rate.sleep();
         count++;
+        if (count == 60)  // 3s
+        {
+            // reset pid
+            vel_pid_x.reset();
+            vel_pid_y.reset();
+            vel_pid_z.reset();
+            acc_pid_x.reset();
+            acc_pid_y.reset();
+            acc_pid_z.reset();
+            // reset the switchflag
+            switchflag = 1;
+            // wait 1s more
+            sleep(1.0);
+        }
     }
+
+    // finish
+    ROS_INFO("------------------------------");
+    ROS_INFO("task finished!!");
+    ROS_INFO("------------------------------");
 }
 
 

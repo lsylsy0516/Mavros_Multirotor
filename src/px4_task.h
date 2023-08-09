@@ -14,7 +14,6 @@
 #include <stdio.h>
 #include <Eigen/Dense>
 #include <std_msgs/Bool.h>
-#include "module/pid.h"
 #include <mavros_msgs/OverrideRCIn.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/TwistStamped.h>
@@ -28,7 +27,10 @@
 #include <mavros_msgs/State.h>
 
 #include <Eigen/Eigen>
+#include "module/pid.h"
 
+#define SERVO_CLOSE 10
+#define SERVO_OPEN  90
 #ifndef __PX4_TASK_H
 #define __PX4_TASK_H
 class Multirotor 
@@ -61,6 +63,8 @@ private:
     void state_cb(const mavros_msgs::State::ConstPtr& msg);
     void position_cb(const geometry_msgs::PoseStamped::ConstPtr& msg);
     void velocity_cb(const geometry_msgs::TwistStamped::ConstPtr& msg);
+    void pid_init();
+
     void flytopoint(Eigen::Vector3d point);
     void setoffboardmode();
     void takeoff();
