@@ -96,6 +96,17 @@ void Multirotor::takeoff()
     ROS_INFO("------------------------------");
     ROS_INFO("drone_pos: x,y,z= %f,%f,%f",drone_pos[0],drone_pos[1],drone_pos[2]);
     ROS_INFO("takeoff  : x,y,z= %f,%f,%f",PositionTarget.pose.position.x,PositionTarget.pose.position.y,PositionTarget.pose.position.z);
+    // ros::ServiceClient set_takeoff_client = nh.serviceClient<mavros_msgs::CommandTOL>("mavros/cmd/takeoff");
+    // mavros_msgs::CommandTOL takeoff;
+    // takeoff.request.altitude = 5;
+    // if(current_state.armed && !takeoff.response.success){
+    //     if(set_takeoff_client.call(takeoff) && takeoff.response.success)
+    //         ROS_INFO("------------------------------");
+    //         ROS_INFO("Vehicle takeoff");
+    //         ROS_INFO("drone_pos: x,y,z= %f,%f,%f",drone_pos[0],drone_pos[1],drone_pos[2]);
+    // }
+    // 据说很重要
+    // sleep(10);
 }
 
 void Multirotor::land()
@@ -126,16 +137,40 @@ void Multirotor::drop_bottle()
 
 // set mode function
 
+void Multirotor::settakeoffmode()
+{
+    mavros_msgs::SetMode offb_set_mode;
+    offb_set_mode.request.custom_mode = "AUTO";
+
+    mavros_msgs::CommandBool arm_cmd;
+    arm_cmd.request.value = true;
+
+    // 设置takeoff 模式，并设置为armed
+    if( current_state.mode != "AUTO")
+    {
+        if( set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) 
+            ROS_INFO("takeoff enabled");
+    }
+    else
+    {
+        // if( !current_state.armed )
+        // {
+        //     if( arming_client.call(arm_cmd) && arm_cmd.response.success)
+        //         ROS_INFO("Vehicle armed");
+        // }
+    }
+}
+
 void Multirotor::setoffboardmode()
 {
     mavros_msgs::SetMode offb_set_mode;
-    offb_set_mode.request.custom_mode = "OFFBOARD";
+    offb_set_mode.request.custom_mode = "guided";
 
     mavros_msgs::CommandBool arm_cmd;
     arm_cmd.request.value = true;
 
     // 设置offboard 模式，并设置为armed
-    if( current_state.mode != "OFFBOARD")
+    if( current_state.mode != "guided")
     {
         if( set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) 
             ROS_INFO("Offboard enabled");
@@ -249,7 +284,7 @@ void Multirotor::run()
     // Takeoff
     while(switchflag == 0)
     {
-        setoffboardmode();
+        settakeoffmode();
         takeoff(); // POSITION
         
         rate.sleep();
@@ -273,122 +308,122 @@ void Multirotor::run()
         }
     }
     
-    // reset the switchflag
-    switchflag = 0;
+    // // reset the switchflag
+    // switchflag = 0;
 
-    // task_points
-    int point_num = 1;
-    while (switchflag == 0)
-    {
-        setoffboardmode();
-        flytopoint(task_points[point_num]);  // VELOCILITY
+    // // task_points
+    // int point_num = 1;
+    // while (switchflag == 0)
+    // {
+    //     setoffboardmode();
+    //     flytopoint(task_points[point_num]);  // VELOCILITY
 
-        rate.sleep();
-        ros::spinOnce();
+    //     rate.sleep();
+    //     ros::spinOnce();
 
-        double distance2d = sqrt(pow((drone_pos[0]-task_points[point_num][0]),2)+pow((drone_pos[1]-task_points[point_num][1]),2));
-        if (distance2d < min_dis)
-        {
-            vel_pid_x.reset();
-            vel_pid_y.reset();
-            vel_pid_z.reset();
-            acc_pid_x.reset();
-            acc_pid_y.reset();
-            acc_pid_z.reset();
+    //     double distance2d = sqrt(pow((drone_pos[0]-task_points[point_num][0]),2)+pow((drone_pos[1]-task_points[point_num][1]),2));
+    //     if (distance2d < min_dis)
+    //     {
+    //         vel_pid_x.reset();
+    //         vel_pid_y.reset();
+    //         vel_pid_z.reset();
+    //         acc_pid_x.reset();
+    //         acc_pid_y.reset();
+    //         acc_pid_z.reset();
 
-            point_num++;
-            if (point_num == 5) switchflag = 1; 
+    //         point_num++;
+    //         if (point_num == 5) switchflag = 1; 
 
-            sleep(1.0);
+    //         sleep(1.0);
                 
-            ROS_INFO("ARRIVED POINT:%d",point_num);
-        }else{
-            ROS_INFO("distance= %f",distance2d);
-        }
-    }
+    //         ROS_INFO("ARRIVED POINT:%d",point_num);
+    //     }else{
+    //         ROS_INFO("distance= %f",distance2d);
+    //     }
+    // }
 
-    // reset the switchflag
-    switchflag = 0;
+    // // reset the switchflag
+    // switchflag = 0;
 
-    // drop
-    int count = 0;
-    while (switchflag == 0)
-    {
-        drop_bottle();
+    // // drop
+    // int count = 0;
+    // while (switchflag == 0)
+    // {
+    //     drop_bottle();
 
-        ros::spinOnce();
-        rate.sleep();
+    //     ros::spinOnce();
+    //     rate.sleep();
         
-        count++;
-        if (count == 60)  // 3s
-        {
-            // reset pid
-            vel_pid_x.reset();
-            vel_pid_y.reset();
-            vel_pid_z.reset();
-            acc_pid_x.reset();
-            acc_pid_y.reset();
-            acc_pid_z.reset();
-            // reset the switchflag
-            switchflag = 1;
-            // wait 1s more
-            sleep(1.0);
-        }
-    }
+    //     count++;
+    //     if (count == 60)  // 3s
+    //     {
+    //         // reset pid
+    //         vel_pid_x.reset();
+    //         vel_pid_y.reset();
+    //         vel_pid_z.reset();
+    //         acc_pid_x.reset();
+    //         acc_pid_y.reset();
+    //         acc_pid_z.reset();
+    //         // reset the switchflag
+    //         switchflag = 1;
+    //         // wait 1s more
+    //         sleep(1.0);
+    //     }
+    // }
     
-    // reset the switchflag
-    switchflag = 0;
+    // // reset the switchflag
+    // switchflag = 0;
 
-    // return to the takeoff point
-    while (switchflag == 0)
-    {
-        setoffboardmode();
-        flytopoint(task_points[0]);
+    // // return to the takeoff point
+    // while (switchflag == 0)
+    // {
+    //     setoffboardmode();
+    //     flytopoint(task_points[0]);
 
-        ros::spinOnce();
-        rate.sleep();
+    //     ros::spinOnce();
+    //     rate.sleep();
 
-        double distance2d = sqrt(pow((drone_pos[0]-task_points[0][0]),2)+pow((drone_pos[1]-task_points[0][1]),2));
-        if (distance2d < min_dis)
-        {
-            switchflag = 2;
-        }else{
-            ROS_INFO("distance= %f",distance2d);
-        }
-    }
+    //     double distance2d = sqrt(pow((drone_pos[0]-task_points[0][0]),2)+pow((drone_pos[1]-task_points[0][1]),2));
+    //     if (distance2d < min_dis)
+    //     {
+    //         switchflag = 2;
+    //     }else{
+    //         ROS_INFO("distance= %f",distance2d);
+    //     }
+    // }
 
-    // reset the switchflag
-    switchflag = 0;
+    // // reset the switchflag
+    // switchflag = 0;
 
-    // land 
-    count = 0;
-    while (switchflag == 0) 
-    {
-        land();
+    // // land 
+    // count = 0;
+    // while (switchflag == 0) 
+    // {
+    //     land();
 
-        ros::spinOnce();
-        rate.sleep();
-        count++;
-        if (count == 60)  // 3s
-        {
-            // reset pid
-            vel_pid_x.reset();
-            vel_pid_y.reset();
-            vel_pid_z.reset();
-            acc_pid_x.reset();
-            acc_pid_y.reset();
-            acc_pid_z.reset();
-            // reset the switchflag
-            switchflag = 1;
-            // wait 1s more
-            sleep(1.0);
-        }
-    }
+    //     ros::spinOnce();
+    //     rate.sleep();
+    //     count++;
+    //     if (count == 60)  // 3s
+    //     {
+    //         // reset pid
+    //         vel_pid_x.reset();
+    //         vel_pid_y.reset();
+    //         vel_pid_z.reset();
+    //         acc_pid_x.reset();
+    //         acc_pid_y.reset();
+    //         acc_pid_z.reset();
+    //         // reset the switchflag
+    //         switchflag = 1;
+    //         // wait 1s more
+    //         sleep(1.0);
+    //     }
+    // }
 
-    // finish
-    ROS_INFO("------------------------------");
-    ROS_INFO("task finished!!");
-    ROS_INFO("------------------------------");
+    // // finish
+    // ROS_INFO("------------------------------");
+    // ROS_INFO("task finished!!");
+    // ROS_INFO("------------------------------");
 }
 
 

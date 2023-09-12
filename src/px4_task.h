@@ -25,6 +25,7 @@
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/State.h>
+#include <mavros_msgs/CommandTOL.h>
 
 #include <Eigen/Eigen>
 #include "module/pid.h"
@@ -67,6 +68,7 @@ private:
 
     void flytopoint(Eigen::Vector3d point);
     void setoffboardmode();
+    void settakeoffmode();
     void takeoff();
     void land();
     void drop_bottle();
