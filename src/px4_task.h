@@ -1,6 +1,6 @@
 /**
  * 对无人机进行封装
-*/
+ */
 #include <ros/ros.h>
 #include <fstream>
 #include <math.h>
@@ -30,55 +30,56 @@
 #include "module/pid.h"
 
 #define SERVO_CLOSE 10
-#define SERVO_OPEN  90
+#define SERVO_OPEN 90
 #ifndef __PX4_TASK_H
 #define __PX4_TASK_H
-class Multirotor 
+class Multirotor
 {
 public:
     Multirotor();
     ~Multirotor();
     void init();
     void run();
+
 private:
-    PID vel_pid_x;
+    \\ PID参数
+        PID vel_pid_x;
     PID vel_pid_y;
     PID vel_pid_z;
     PID acc_pid_x;
     PID acc_pid_y;
     PID acc_pid_z;
 
-
     ros::NodeHandle nh;
-    ros::Subscriber state_sub;
-    ros::Subscriber position_sub;
-    ros::Subscriber velocity_sub;
-    ros::Publisher vel_pub;
-    ros::Publisher pos_pub;
-    ros::Publisher drop_pub ;
-    ros::ServiceClient arming_client;
-    ros::ServiceClient set_mode_client;
-    mavros_msgs::OverrideRCIn drop_cmd;
+    ros::Subscriber state_sub;          // 订阅无人机当前时刻状态
+    ros::Subscriber position_sub;       // 订阅无人机当前位置
+    ros::Subscriber velocity_sub;       // 订阅无人机当前速度
+    ros::Publisher vel_pub;             // 发布无人机期望速度
+    ros::Publisher pos_pub;             // 发布无人机期望位置
+    ros::Publisher drop_pub;            // 发布投放指令
+    ros::ServiceClient arming_client;   // 无人机解锁
+    ros::ServiceClient set_mode_client; // 无人机设置模式
+    mavros_msgs::OverrideRCIn drop_cmd; // 投放指令
 
-    void state_cb(const mavros_msgs::State::ConstPtr& msg);
-    void position_cb(const geometry_msgs::PoseStamped::ConstPtr& msg);
-    void velocity_cb(const geometry_msgs::TwistStamped::ConstPtr& msg);
+    void state_cb(const mavros_msgs::State::ConstPtr &msg);
+    void position_cb(const geometry_msgs::PoseStamped::ConstPtr &msg);
+    void velocity_cb(const geometry_msgs::TwistStamped::ConstPtr &msg);
     void pid_init();
+    void pid_reset();
 
     void flytopoint(Eigen::Vector3d point);
     void setoffboardmode();
     void takeoff();
     void land();
     void drop_bottle();
-    
-    mavros_msgs::State current_state;
-    Eigen::Vector3d drone_pos; // 无人机当前位置  // enu
-    Eigen::Vector3d drone_vel; // 无人机当前速度
-    std::vector<Eigen::Vector3d> task_points; // 任务点
-    float fly_height; // 飞行高度
-    float min_dis; // 到达任务点的最小距离
-    int switchflag; // 任务点切换标志
-};
 
+    mavros_msgs::State current_state;         // 无人机当前状态
+    Eigen::Vector3d drone_pos;                // 无人机当前位置  // enu
+    Eigen::Vector3d drone_vel;                // 无人机当前速度
+    std::vector<Eigen::Vector3d> task_points; // 任务点
+    float fly_height;                         // 飞行高度
+    float min_dis;                            // 到达任务点的最小距离
+    int switchflag;                           // 任务点切换标志
+};
 
 #endif
