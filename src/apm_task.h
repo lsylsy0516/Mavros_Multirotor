@@ -69,9 +69,8 @@ private:
     void pid_reset();
 
     void flytopoint(Eigen::Vector3d point);
-    void setoffboardmode();
-    void settakeoffmode();
-    void takeoff();
+    void setGUIDEDmode();
+    bool takeoff();
     void land();
     void drop_bottle();
 

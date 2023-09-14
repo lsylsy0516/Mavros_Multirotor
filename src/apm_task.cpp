@@ -1,4 +1,4 @@
-#include "px4_task.h"
+#include "apm_task.h"
 using namespace std;
 
 float calc_distance3d(Eigen::Vector3d a, Eigen::Vector3d b)
@@ -86,45 +86,41 @@ void Multirotor::flytopoint(Eigen::Vector3d point)
     ROS_INFO("------------------------------");
 }
 
-void Multirotor::takeoff()
+bool Multirotor::takeoff()
 {
-    // POSITION
-    geometry_msgs::PoseStamped PositionTarget;
-    PositionTarget.header.stamp = ros::Time::now();
-    PositionTarget.pose.position.x = drone_pos[0]; // 无人机当前位置
-    PositionTarget.pose.position.y = drone_pos[1];
-    PositionTarget.pose.position.z = fly_height;
-    pos_pub.publish(PositionTarget);
-    // 输出当前和目标状态
-    ROS_INFO("------------------------------");
-    ROS_INFO("drone_pos: x,y,z= %f,%f,%f",drone_pos[0],drone_pos[1],drone_pos[2]);
-    ROS_INFO("takeoff  : x,y,z= %f,%f,%f",PositionTarget.pose.position.x,PositionTarget.pose.position.y,PositionTarget.pose.position.z);
-    // ros::ServiceClient set_takeoff_client = nh.serviceClient<mavros_msgs::CommandTOL>("mavros/cmd/takeoff");
-    // mavros_msgs::CommandTOL takeoff;
-    // takeoff.request.altitude = 5;
-    // if(current_state.armed && !takeoff.response.success){
-    //     if(set_takeoff_client.call(takeoff) && takeoff.response.success)
-    //         ROS_INFO("------------------------------");
-    //         ROS_INFO("Vehicle takeoff");
-    //         ROS_INFO("drone_pos: x,y,z= %f,%f,%f",drone_pos[0],drone_pos[1],drone_pos[2]);
-    // }
-    // 据说很重要
-    // sleep(10);
+    ros::ServiceClient set_takeoff_client = nh.serviceClient<mavros_msgs::CommandTOL>("mavros/cmd/takeoff");
+    mavros_msgs::CommandTOL takeoff;
+    takeoff.request.altitude = task_points[0][2];
+    if(current_state.armed){    // is armed
+        if(set_takeoff_client.call(takeoff) && takeoff.response.success){   
+            ROS_INFO("------------------------------");
+            ROS_INFO("Vehicle takeoff");
+            ROS_INFO("drone_pos: x,y,z= %f,%f,%f",drone_pos[0],drone_pos[1],drone_pos[2]);
+            return true;
+        }
+        else
+            return false;
+    }
+    else
+        return false;
 }
 
 void Multirotor::land()
 {
-    // POSITION
-    geometry_msgs::PoseStamped PositionTarget;
-    PositionTarget.header.stamp = ros::Time::now();
-    PositionTarget.pose.position.x = drone_pos[0];
-    PositionTarget.pose.position.y = drone_pos[1];
-    PositionTarget.pose.position.z = 0;
-    pos_pub.publish(PositionTarget);
+    mavros_msgs::SetMode land_set_mode;
+    land_set_mode.request.custom_mode = "LAND";
+
+    if (current_state.mode != "LAND")
+    {
+        if(set_mode_client.call(land_set_mode) && land_set_mode.response.mode_sent)
+        {
+            ROS_INFO("LAND enabled");
+        }
+    }
     // 输出当前和目标状态
     ROS_INFO("------------------------------");
+    ROS_INFO("Vehicle landing");
     ROS_INFO("drone_pos: x,y,z= %f,%f,%f", drone_pos[0], drone_pos[1], drone_pos[2]);
-    ROS_INFO("landing  :  x,y,z= %f,%f,%f", PositionTarget.pose.position.x, PositionTarget.pose.position.y, PositionTarget.pose.position.z);
 }
 
 void Multirotor::drop_bottle()
@@ -149,44 +145,20 @@ void Multirotor::drop_bottle()
 }
 
 // set mode function
-
-void Multirotor::settakeoffmode()
+void Multirotor::setGUIDEDmode()
 {
     mavros_msgs::SetMode offb_set_mode;
-    offb_set_mode.request.custom_mode = "OFFBOARD";
+    offb_set_mode.request.custom_mode = "GUIDED";
 
     mavros_msgs::CommandBool arm_cmd;
     arm_cmd.request.value = true;
 
-    // 设置offboard 模式，并设置为armed
-    if( current_state.mode != "OFFBOARD")
-    {
-        if( set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) 
-            ROS_INFO("offboard enabled");
-    }
-    else
-    {
-        if( !current_state.armed )
-        {
-            if( arming_client.call(arm_cmd) && arm_cmd.response.success)
-                ROS_INFO("Vehicle armed");
-        }
-    }
-}
-
-void Multirotor::setoffboardmode()
-{
-    mavros_msgs::SetMode offb_set_mode;
-    offb_set_mode.request.custom_mode = "OFFBOARD";
-
-    mavros_msgs::CommandBool arm_cmd;
-    arm_cmd.request.value = true;
-
-    // 设置offboard 模式，并设置为armed
-    if (current_state.mode != "OFFBOARD")
+    // 设置GUIDED 模式，并设置为armed
+    if (current_state.mode != "GUIDED")
     {
         if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent)
-            ROS_INFO("Offboard enabled");
+            ROS_INFO("GUIDED enabled");
+            
     }
     else
     {
@@ -270,7 +242,7 @@ void Multirotor::init()
     // Load PID parameters with default values
     pid_init();
     nh.setParam("servo_position", SERVO_CLOSE); // 初始化占空比
-    nh.param<float>("fly_height", fly_height, 0.5);
+    nh.param<float>("fly_height", fly_height, 5);
     nh.param<float>("min_dis", min_dis, 0.1);
 
     // Get Drone_pos
@@ -289,8 +261,7 @@ void Multirotor::init()
 
     // For Test
     task_points.push_back(Eigen::Vector3d(drone_pos[0], drone_pos[1], fly_height));
-    ROS_INFO("task_point:%f,%f,%f",drone_pos[0], drone_pos[1], fly_height);
-    task_points.push_back(Eigen::Vector3d(drone_pos[0], drone_pos[1], fly_height));
+    task_points.push_back(Eigen::Vector3d(drone_pos[0], (drone_pos[1]), fly_height));
     // task_points.push_back(Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height));
     // task_points.push_back(Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height));
 
@@ -309,21 +280,21 @@ void Multirotor::init()
 void Multirotor::run()
 {
     ros::Rate rate(20);
+    ROS_INFO("Start TakeOff!");
 
     // takeoff
-    while (switchflag == 0)
-    {
-        settakeoffmode();
-        takeoff(); // POSITION
-
+    while (!takeoff()){
+        setGUIDEDmode();
         rate.sleep();
         ros::spinOnce();
+    }
 
+    while (switchflag == 0){
+        rate.sleep();
+        ros::spinOnce();
         double distance1d = abs(drone_pos[2]-task_points[0][2]);
-        
         if (distance1d < min_dis)
         {
-            ROS_INFO("distance : %f", distance1d);
             // reset the switchflag
             switchflag = 1;
             // reset pid
@@ -333,10 +304,13 @@ void Multirotor::run()
         }
         else
         {
+            ROS_INFO("------------------------------");
+            ROS_INFO("Vehicle takeoff");
+            ROS_INFO("drone_pos: x,y,z= %f,%f,%f", drone_pos[0], drone_pos[1], drone_pos[2]);
             ROS_INFO("distance : %f", distance1d);
         }
     }
-
+    
     // reset the switchflag
     switchflag = 0;
 
@@ -344,7 +318,6 @@ void Multirotor::run()
     int point_num = 1;
     while (switchflag == 0)
     {
-        setoffboardmode();
         flytopoint(task_points[point_num]); // VELOCILITY
 
 
@@ -361,7 +334,7 @@ void Multirotor::run()
         }
         else
         {
-            ROS_INFO("distance :%f", distance2d);
+            ROS_INFO("distance2d :%f", distance2d);
         }
         rate.sleep();
         ros::spinOnce();
@@ -372,6 +345,7 @@ void Multirotor::run()
 
     // drop
     int count = 0;
+    pid_reset();
     while (switchflag == 0)
     {
         drop_bottle();
@@ -397,7 +371,7 @@ void Multirotor::run()
     // return to the takeoff point
     while (switchflag == 0)
     {
-        setoffboardmode();
+        setGUIDEDmode();
         flytopoint(task_points[0]);
 
         ros::spinOnce();
@@ -410,7 +384,7 @@ void Multirotor::run()
         }
         else
         {
-            ROS_INFO("distance : %f", distance2d);
+            ROS_INFO("distance2d : %f", distance2d);
         }
     }
 

@@ -2,9 +2,10 @@
     <rosparam file="$(find offboard)/config/cadc_task.yaml" command="load"/>
 
 
-  <include file="$(find mavros)/launch/apm.launch" >
-    <!-- <arg name="fcu_url" value="udp://:14540@127.0.0.1:14557"/> -->
-    <arg name="fcu_url" value="udp://127.0.0.1:14550@14555"/>
+  <!-- <include file="$(find mavros)/launch/apm.launch" > -->
+  <include file="$(find mavros)/launch/px4.launch" >
+    <arg name="fcu_url" value="udp://:14540@127.0.0.1:14557"/>
+    <!-- <arg name="fcu_url" value="udp://127.0.0.1:14550@14555"/> -->
   </include>
 
     <node name = "px4_task" pkg="offboard" type="px4_task" output="screen" />

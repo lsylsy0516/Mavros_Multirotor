@@ -139,7 +139,9 @@ include_directories(
  add_executable(${PROJECT_NAME}_node src/offboard_node.cpp)
  add_executable(control_test src/control_test.cpp)
  add_executable(mav_test src/test.cpp)
+ add_executable(apm_test src/apm_test.cpp)
  add_executable(px4_task src/px4_task.cpp src/module/pid.cpp)
+ add_executable(apm_task src/apm_task.cpp src/module/pid.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -164,6 +166,13 @@ include_directories(
  target_link_libraries(px4_task
    ${catkin_LIBRARIES}
  )
+ target_link_libraries(apm_task
+ ${catkin_LIBRARIES}
+)
+target_link_libraries(apm_test
+${catkin_LIBRARIES}
+)
+
 #############
 ## Install ##
 #############
