@@ -32,8 +32,8 @@
 
 #define SERVO_CLOSE 10
 #define SERVO_OPEN  90
-#ifndef __PX4_TASK_H
-#define __PX4_TASK_H
+#ifndef __APM_TASK_H
+#define __APM_TASK_H
 class Multirotor
 {
 public:
