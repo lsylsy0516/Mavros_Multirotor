@@ -1,0 +1,7 @@
+# 1 to drop the table
+bool drop
+
+---
+
+#1-success
+int8 ack
