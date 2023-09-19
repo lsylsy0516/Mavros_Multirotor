@@ -1,22 +1,25 @@
 #include "DroneServer.h"
+#include <mavros_msgs/State.h>
+using namespace std;
+
 
 Multirotor_Server::Multirotor_Server()
 {
     // subscribe the state of the drone
-    state_sub = nh.subscribe<mavros_msgs::State>("mavros/state", 10, &void Multirotor_Server::state_cb, this);
-    position_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose", 10, &void Multirotor_Server::position_cb, this);
-    velocity_sub = nh.subscribe<geometry_msgs::TwistStamped>("mavros/local_position/velocity_local", 10, &void Multirotor_Server::velocity_cb, this);
+    state_sub = nh.subscribe<mavros_msgs::State>("mavros/state", 10, &Multirotor_Server::state_cb, this);
+    position_sub = nh.subscribe<geometry_msgs::PoseStamped>("mavros/local_position/pose", 10, &Multirotor_Server::position_cb, this);
+    velocity_sub = nh.subscribe<geometry_msgs::TwistStamped>("mavros/local_position/velocity_local", 10, &Multirotor_Server::velocity_cb, this);
     
     // execute drone control
     pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 10);
     vel_pub = nh.advertise<geometry_msgs::TwistStamped>("mavros/setpoint_velocity/cmd_vel", 10);
-    drop_pub = nh.advertise<mavros_msgs::OverrideRCIn>("mavros/rc/override", 10);
-
+    set_mode_client = nh.serviceClient<mavros_msgs::SetMode>("mavros/set_mode");
+    
     // do service from the upper module
-    takeoffOrLanding_server = nh.advertiseService("takeoffOrLanding", &void Multirotor_Server::takeoffOrLanding_serverCB, this);
-    flightByVel_server = nh.advertiseService("flightByVel", &void Multirotor_Server::flightByVel_serverCB, this);
-    flightByOffset_server = nh.advertiseService("flightByOffset", &void Multirotor_Server::flightByOffset_serverCB, this);
-    drop_server = nh.advertiseService("drop", &void Multirotor_Server::drop_serverCB, this);
+    takeoffOrLanding_server = nh.advertiseService("takeoffOrLanding", &Multirotor_Server::takeoffOrLanding_serverCB, this);
+    flightByVel_server = nh.advertiseService("flightByVel", &Multirotor_Server::flightByVel_serverCB, this);
+    flightByOffset_server = nh.advertiseService("flightByOffset", &Multirotor_Server::flightByOffset_serverCB, this);
+    drop_server = nh.advertiseService("drop", &Multirotor_Server::drop_serverCB, this);
 
 }
 
@@ -25,7 +28,7 @@ Multirotor_Server::~Multirotor_Server()
 
 }
 
-void Multirotor_Server::state_cb()
+void Multirotor_Server::state_cb(const mavros_msgs::State::ConstPtr& msg)
 {
     current_state = *msg;
 }
@@ -44,7 +47,7 @@ void Multirotor_Server::velocity_cb(const geometry_msgs::TwistStamped::ConstPtr 
     drone_vel(2) = msg->twist.linear.z;
 }
 
-void Multirotor_Server::takeoffOrLanding_serverCB(offboard::takeoffOrLanding::Request  &req,
+bool Multirotor_Server::takeoffOrLanding_serverCB(offboard::takeoffOrLanding::Request  &req,
         offboard::takeoffOrLanding::Response &res)
 {
     res.ack = 1;
@@ -61,7 +64,7 @@ void Multirotor_Server::takeoffOrLanding_serverCB(offboard::takeoffOrLanding::Re
     return true;
 }
 
-void Multirotor_Server::flightByVel_serverCB(offboard::flightByVel::Request  &req, 
+bool Multirotor_Server::flightByVel_serverCB(offboard::flightByVel::Request  &req, 
         offboard::flightByVel::Response &res)
 {
     res.ack = 1;
@@ -70,10 +73,12 @@ void Multirotor_Server::flightByVel_serverCB(offboard::flightByVel::Request  &re
     flight_status = Multirotor_Server::FlightStatus::FLIGHTBYVEL;
     vel_x = req.vel_x;
     vel_y = req.vel_y;
+    fly_time = req.fly_time;
+    return true;
     
 }
 
-void Multirotor_Server::flightByOffset_serverCB(offboard::flightByOffset::Request  &req, 
+bool Multirotor_Server::flightByOffset_serverCB(offboard::flightByOffset::Request  &req, 
         offboard::flightByOffset::Response &res)
 {
     res.ack = 1;
@@ -82,20 +87,21 @@ void Multirotor_Server::flightByOffset_serverCB(offboard::flightByOffset::Reques
     flight_status = Multirotor_Server::FlightStatus::FLIGHTBYOFFSET;
     delta_x = req.delta_x;
     delta_y = req.delta_y;
-    fly_time = req.fly_time;
+    return true;
 }
 
-void Multirotor_Server::drop_serverCB(offboard::drop::Request  &req, 
+bool Multirotor_Server::drop_serverCB(offboard::drop::Request  &req, 
         offboard::drop::Response &res)
 {
     res.ack = 1;
     ROS_INFO("drop server cb ");
     flight_status = Multirotor_Server::FlightStatus::DROP;
+    return true;
 }
 
 void Multirotor_Server::run()
 {
-    ros::Rate rate(20.0);
+    ros::Rate rate(1.0);
     while (ros::ok())
     {
         switch (flight_status)
@@ -148,6 +154,7 @@ void Multirotor_Server::takeoff()
     if (set_takeoff_client.call(takeoff_cmd) && takeoff_cmd.response.success)
     {
         ROS_INFO("takeoff success");
+        ros::Duration(5).sleep();
         flight_status = Multirotor_Server::FlightStatus::IDLE;
     }
     else
@@ -166,6 +173,7 @@ void Multirotor_Server::landing()
     {
         if(set_mode_client.call(land_set_mode) && land_set_mode.response.mode_sent)
         {
+            ros::Duration(10.0).sleep();
             ROS_INFO("landing success");
         }
         else
@@ -173,6 +181,8 @@ void Multirotor_Server::landing()
             ROS_INFO("landing failed");
         }
     }
+    flight_status = Multirotor_Server::FlightStatus::IDLE;
+
 }
 
 void Multirotor_Server::flightByVel()
@@ -183,6 +193,9 @@ void Multirotor_Server::flightByVel()
     vel_cmd.twist.linear.y = vel_y;
     vel_cmd.twist.linear.z = 0.0;
     vel_pub.publish(vel_cmd);
+    ros::Duration(fly_time/1000).sleep();
+    flight_status = Multirotor_Server::FlightStatus::IDLE;
+
 }
 
 void Multirotor_Server::flightByOffset()
@@ -193,11 +206,13 @@ void Multirotor_Server::flightByOffset()
     pos_cmd.pose.position.y = drone_pos(1) + delta_y;
     pos_cmd.pose.position.z = drone_pos(2);
     pos_pub.publish(pos_cmd);
-    ros::Duration(fly_time).sleep();
+    ros::Duration(5).sleep();
+    flight_status = Multirotor_Server::FlightStatus::IDLE;
 }
 
 void Multirotor_Server::drop()
 {
+    ros::Publisher drop_pub = nh.advertise<mavros_msgs::OverrideRCIn>("mavros/rc/override", 10);
     drop_cmd.channels[0] = 0;
     drop_cmd.channels[1] = 0;
     drop_cmd.channels[2] = 0;

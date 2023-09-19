@@ -1,5 +1,5 @@
 <launch>
-    <rosparam file="$(find offboard)/config/cadc_task.yaml" command="load"/>
+    <!-- <rosparam file="$(find offboard)/config/cadc_task.yaml" command="load"/> -->
 
   <include file="$(find mavros)/launch/apm.launch" >
   <!-- <include file="$(find mavros)/launch/px4.launch" > -->
@@ -7,6 +7,6 @@
     <arg name="fcu_url" value="udp://127.0.0.1:14550@14555"/>
   </include>
 
-    <node name = "apm_task" pkg="offboard" type="apm_task" output="screen" />
+    <!-- <node name = "apm_task" pkg="offboard" type="apm_task" output="screen" /> -->
 
 </launch>

@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   mavros_msgs
   roscpp
   std_msgs
+  message_generation
 )
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIRS})
@@ -73,10 +74,12 @@ add_service_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   geometry_msgs#   mavros_msgs#   std_msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  geometry_msgs
+  mavros_msgs   
+  std_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -144,6 +147,8 @@ include_directories(
  add_executable(apm_test src/apm_test.cpp)
  add_executable(px4_task src/px4_task.cpp src/module/pid.cpp)
  add_executable(apm_task src/apm_task.cpp src/module/pid.cpp)
+ add_executable(client_drone src/DroneClient.cpp)
+ add_executable(service_drone src/DroneServer.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -171,10 +176,15 @@ include_directories(
  target_link_libraries(apm_task
  ${catkin_LIBRARIES}
 )
-target_link_libraries(apm_test
+ target_link_libraries(apm_test
 ${catkin_LIBRARIES}
 )
-
+ target_link_libraries(client_drone
+${catkin_LIBRARIES}
+)
+ target_link_libraries(service_drone
+${catkin_LIBRARIES}
+)
 #############
 ## Install ##
 #############
