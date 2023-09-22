@@ -30,6 +30,7 @@
 #include "offboard/flightByVel.h"
 #include "offboard/flightByOffset.h"
 #include "offboard/takeoffOrLanding.h"
+#include "./module/tic_toc.h"
 
 #ifndef DRONE_SERVICE
 #define DRONE_SERVICE
@@ -51,7 +52,7 @@ private:
         float vel_y;
         float delta_x;
         float delta_y;
-        float fly_time;
+        int fly_time;
 
         // drone control
         enum FlightStatus
