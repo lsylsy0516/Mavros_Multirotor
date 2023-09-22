@@ -1,1 +1,3 @@
 ./px4_command/**
+./bag/**
+./.vscode/**
