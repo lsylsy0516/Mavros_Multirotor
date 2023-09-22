@@ -281,16 +281,16 @@ void Multirotor::init()
     }
 
     // Set Task_points
-    // task_points.push_back(Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height)); // takeoff point
-    // task_points.push_back(Eigen::Vector3d( 0,30,fly_height)); // task point 1
+    task_points.push_back(Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height)); // takeoff point
+    task_points.push_back(Eigen::Vector3d( 0,10,fly_height)); // task point 1
     // task_points.push_back(Eigen::Vector3d(-4,30,fly_height)); // task point 2
     // task_points.push_back(Eigen::Vector3d(-4,50,fly_height)); // task point 3
     // task_points.push_back(Eigen::Vector3d( 4,50,fly_height)); // task point 4
 
     // For Test
-    task_points.push_back(Eigen::Vector3d(drone_pos[0], drone_pos[1], fly_height));
-    ROS_INFO("task_point:%f,%f,%f",drone_pos[0], drone_pos[1], fly_height);
-    task_points.push_back(Eigen::Vector3d(drone_pos[0], drone_pos[1], fly_height));
+    // task_points.push_back(Eigen::Vector3d(drone_pos[0], drone_pos[1], fly_height));
+    // ROS_INFO("task_point:%f,%f,%f",drone_pos[0], drone_pos[1], fly_height);
+    // task_points.push_back(Eigen::Vector3d(drone_pos[0], drone_pos[1], fly_height));
     // task_points.push_back(Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height));
     // task_points.push_back(Eigen::Vector3d(drone_pos[0],drone_pos[1],fly_height));
 

@@ -8,6 +8,6 @@
     <!-- <arg name="fcu_url" value="udp://127.0.0.1:14550@14555"/> -->
   </include>
 
-    <node name = "px4_task" pkg="offboard" type="px4_task" output="screen" />
+    <!-- <node name = "px4_task" pkg="offboard" type="px4_task" output="screen" /> -->
 
 </launch>

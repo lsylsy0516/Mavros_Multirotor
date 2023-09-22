@@ -94,29 +94,36 @@ bool Multirotor_Server::drop_serverCB(offboard::drop::Request  &req,
         offboard::drop::Response &res)
 {
     res.ack = 1;
-    ROS_INFO("drop server cb ");
+    ROS_INFO("drop server cb");
     flight_status = Multirotor_Server::FlightStatus::DROP;
     return true;
 }
 
 void Multirotor_Server::run()
 {
-    ros::Rate rate(1.0);
+    ros::Rate rate(10.0);   // 10HZ
     while (ros::ok())
     {
+        TicToc tictoc;
         switch (flight_status)
         {
             case Multirotor_Server::FlightStatus::TAKEOFF:
                 ROS_INFO("takeoff");
                 Multirotor_Server::takeoff();
+                rate.sleep();
                 break;
             case Multirotor_Server::FlightStatus::LANDING:
                 ROS_INFO("landing");
                 Multirotor_Server::landing();
+                rate.sleep();
                 break;
             case Multirotor_Server::FlightStatus::FLIGHTBYVEL:
                 ROS_INFO("flight by vel");
-                Multirotor_Server::flightByVel();
+                for (int i = 0; i <(fly_time/100) ; i++)
+                {
+                    Multirotor_Server::flightByVel();
+                    rate.sleep();
+                }           
                 break;
             case Multirotor_Server::FlightStatus::FLIGHTBYOFFSET:
                 ROS_INFO("flight by offset");
@@ -125,18 +132,21 @@ void Multirotor_Server::run()
             case Multirotor_Server::FlightStatus::DROP:
                 ROS_INFO("drop");
                 Multirotor_Server::drop();
+                rate.sleep();
                 break;
             case Multirotor_Server::FlightStatus::IDLE:
                 ROS_INFO("idle");
                 Multirotor_Server::idle();
+                rate.sleep();
                 break;
             default:
                 ROS_INFO("default");
                 Multirotor_Server::idle();
+                rate.sleep();
                 break;
         }
         ros::spinOnce();
-        rate.sleep();
+        ROS_INFO("sleep time= %f",tictoc.toc());
     }
 }
 
@@ -187,13 +197,14 @@ void Multirotor_Server::landing()
 
 void Multirotor_Server::flightByVel()
 {
+
     geometry_msgs::TwistStamped vel_cmd;
     vel_cmd.header.stamp = ros::Time::now();
     vel_cmd.twist.linear.x = vel_x;
     vel_cmd.twist.linear.y = vel_y;
     vel_cmd.twist.linear.z = 0.0;
     vel_pub.publish(vel_cmd);
-    ros::Duration(fly_time/1000).sleep();
+
     flight_status = Multirotor_Server::FlightStatus::IDLE;
 
 }
