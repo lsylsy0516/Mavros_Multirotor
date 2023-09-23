@@ -1,5 +1,5 @@
 ## cadc_task parameters
-fly_height: 2.0
+fly_height: 3.0
 min_distance: 0.15
 change_dis: 0.5
 x:

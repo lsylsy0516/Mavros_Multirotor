@@ -154,7 +154,7 @@ void Multirotor_Server::takeoff()
 {
     ros::ServiceClient set_takeoff_client = nh.serviceClient<mavros_msgs::CommandTOL>("mavros/cmd/takeoff");
     mavros_msgs::CommandTOL takeoff_cmd;
-    takeoff_cmd.request.altitude = nh.param<float>("takeoff_height", 5.0);  // 5m
+    takeoff_cmd.request.altitude = nh.param<float>("fly_height", 5.0);  // 5m
     if (current_state.mode == "GUIDED" && current_state.armed){}
     else{
         ROS_ERROR("PLEASE ARM AND SWITCH TO GUIDED MODE FIRST");
@@ -204,9 +204,7 @@ void Multirotor_Server::flightByVel()
     vel_cmd.twist.linear.y = vel_y;
     vel_cmd.twist.linear.z = 0.0;
     vel_pub.publish(vel_cmd);
-
     flight_status = Multirotor_Server::FlightStatus::IDLE;
-
 }
 
 void Multirotor_Server::flightByOffset()
